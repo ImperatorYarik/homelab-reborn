@@ -1,0 +1,77 @@
+# playbooks/reset.yaml
+- name: Reset k3s workers
+  hosts: workers
+  become: yes
+  tasks:
+    - name: Stop k3s worker service
+      systemd:
+        name: k3s
+        state: stopped
+      ignore_errors: yes
+
+    - name: Run k3s worker uninstall script
+      shell: /usr/local/bin/k3s-agent-uninstall.sh
+      args:
+        removes: /usr/local/bin/k3s-agent-uninstall.sh
+      ignore_errors: yes
+
+    - name: Remove k3s binary
+      file:
+        path: /usr/local/bin/k3s
+        state: absent
+
+- name: Reset k3s master
+  hosts: control-plane
+  become: yes
+  tasks:
+    - name: Stop k3s service
+      systemd:
+        name: k3s
+        state: stopped
+      ignore_errors: no
+
+    - name: Run k3s master uninstall script
+      shell: /usr/local/bin/k3s-uninstall.sh
+      args:
+        removes: /usr/local/bin/k3s-uninstall.sh
+      ignore_errors: no
+
+    - name: Remove k3s binary
+      file:
+        path: /usr/local/bin/k3s
+        state: absent
+
+    - name: Remove k3s data directory
+      file:
+        path: /var/lib/rancher
+        state: absent
+
+    - name: Remove k3s config directory
+      file:
+        path: /etc/rancher
+        state: absent
+
+- name: Cleanup local files
+  hosts: localhost
+  become: no
+  tasks:
+    - name: Remove k3s token file
+      file:
+        path: /tmp/k3s-token
+        state: absent
+
+    - name: Remove kubeconfig
+      file:
+        path: ~/.kube/config
+        state: absent
+      ignore_errors: no
+
+    - name: Remove node password file
+      file:
+        path: /etc/rancher/node/password
+        state: absent
+
+    - name: Remove node passwd on master
+      file:
+        path: /var/lib/rancher/k3s/server/cred/node-passwd
+        state: absent

@@ -1,0 +1,26 @@
+- name: Install k3s on control plane
+  shell: |
+    curl -sfL https://get.k3s.io | sh -s - \
+      --disable traefik \
+      --write-kubeconfig-mode 644 \
+      --node-ip {{ hostvars['k3s-master'].ansible_host }}
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Get k3s installation token
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_token
+
+- name: Save token to local file
+  local_action:
+    module: copy
+    content: "{{ k3s_token.content }}"
+    dest: /tmp/k3s-token
+  become: no
+
+- name: Get kubeconfig
+  fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: ~/.kube/config
+    flat: yes

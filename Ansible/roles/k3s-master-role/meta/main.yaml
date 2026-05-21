@@ -1,6 +1,7 @@
 ---
 galaxy_info:
   author: ytsalko
+  license: MIT
   role_name: k3s_master
   namespace: ytsalko
   description: Install and configure k3s server on the control plane

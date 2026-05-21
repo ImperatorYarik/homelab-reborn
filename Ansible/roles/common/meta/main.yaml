@@ -1,6 +1,7 @@
 ---
 galaxy_info:
   author: ytsalko
+  license: MIT
   role_name: common
   namespace: ytsalko
   description: Base package setup for all nodes

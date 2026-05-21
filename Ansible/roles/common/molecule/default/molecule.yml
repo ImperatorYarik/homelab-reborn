@@ -1,5 +1,4 @@
-dependency:
-  name: galaxy
+---
 driver:
   name: docker
 platforms:
@@ -8,5 +7,20 @@ platforms:
     pre_build_image: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.."
 verifier:
   name: ansible
+scenario:
+  test_sequence:
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

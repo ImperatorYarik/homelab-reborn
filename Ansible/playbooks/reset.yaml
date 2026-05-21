@@ -1,3 +1,4 @@
+---
 # playbooks/reset.yaml
 - name: Reset k3s workers
   hosts: workers

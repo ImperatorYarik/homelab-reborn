@@ -42,7 +42,7 @@ jobs:
       - name: ansible-lint
         id: ansible-lint
         run: |
-          ansible-lint -f github 2>&1 | tee /tmp/ansible-lint.txt
+          ansible-lint -f md 2>&1 | tee /tmp/ansible-lint.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 

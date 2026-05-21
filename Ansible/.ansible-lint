@@ -1,0 +1,7 @@
+profile: basic
+
+exclude_paths:
+  - .git/
+
+warn_list:
+  - command-instead-of-module  # kubectl tasks intentionally use command, not kubernetes.core

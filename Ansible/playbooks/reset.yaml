@@ -10,7 +10,7 @@
       failed_when: false
 
     - name: Run k3s agent uninstall script
-      ansible.builtin.shell: /usr/local/bin/k3s-agent-uninstall.sh
+      ansible.builtin.command: /usr/local/bin/k3s-agent-uninstall.sh
       args:
         removes: /usr/local/bin/k3s-agent-uninstall.sh
 
@@ -29,7 +29,7 @@
         state: stopped
 
     - name: Run k3s master uninstall script
-      ansible.builtin.shell: /usr/local/bin/k3s-uninstall.sh
+      ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
       args:
         removes: /usr/local/bin/k3s-uninstall.sh
 

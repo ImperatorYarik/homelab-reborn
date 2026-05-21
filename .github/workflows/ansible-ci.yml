@@ -1,0 +1,79 @@
+name: Ansible CI
+
+on:
+  push:
+    paths:
+      - 'Ansible/**'
+      - '.github/workflows/ansible-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Ansible/**'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Ansible
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install 'ansible-core~=2.17' 'ansible-lint~=24.0' 'yamllint~=1.35'
+
+      - name: yamllint
+        run: yamllint .
+
+      - name: ansible-lint
+        run: ansible-lint
+
+  syntax-check:
+    name: Syntax check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Ansible
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install ansible-core
+        run: pip install 'ansible-core~=2.17'
+
+      - name: Syntax check — site.yaml
+        run: ansible-playbook playbooks/site.yaml --syntax-check
+
+      - name: Syntax check — reset.yaml
+        run: ansible-playbook playbooks/reset.yaml --syntax-check
+
+  molecule:
+    name: Molecule — common role
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install 'ansible-core~=2.17' molecule 'molecule-plugins[docker]' docker
+
+      - name: Run molecule
+        run: molecule test
+        working-directory: Ansible/roles/common
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'

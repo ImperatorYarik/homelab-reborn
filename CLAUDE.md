@@ -27,7 +27,7 @@ After `vagrant up`, manually add your SSH public key to each VM's `~/.ssh/author
 
 ## Ansible
 
-All Ansible commands run from `Ansible/`. The `ansible.cfg` there sets the inventory and roles path, so no extra flags are needed.
+All Ansible commands run from `Ansible/`. The `ansible.cfg` there sets the inventory, roles path, and SSH options — no extra flags needed.
 
 ```bash
 # Verify connectivity
@@ -36,9 +36,11 @@ ansible all -m ping
 # Provision the full cluster
 ansible-playbook playbooks/site.yaml
 
+# Run a specific layer only (tags: common, k3s, k3s-master, k3s-worker, argocd)
+ansible-playbook playbooks/site.yaml --tags argocd
+
 # Target a single host or group
 ansible-playbook playbooks/site.yaml --limit k3s-master
-ansible-playbook playbooks/site.yaml --limit control-plane
 
 # Tear down the cluster (removes k3s, token, and local kubeconfig)
 ansible-playbook playbooks/reset.yaml
@@ -51,21 +53,39 @@ ansible-playbook playbooks/site.yaml --check
 
 ### Playbook flow (`playbooks/site.yaml`)
 
-1. **common** role — runs on all nodes: updates apt cache and installs base packages (git, curl, wget, htop, net-tools).
-2. **k3s-master-role** — runs on `control-plane` group: installs k3s server (traefik disabled), writes node token to `/tmp/k3s-token` on the control machine, and fetches kubeconfig to `~/.kube/config`.
-3. **k3s-worker-role** — runs on `workers` group: reads the token from `/tmp/k3s-token` and joins the worker to the cluster via `K3S_URL`.
-4. **argocd** role — runs on `control-plane`: not yet implemented.
+1. **common** — all nodes: updates apt cache, installs base packages.
+2. **k3s-master-role** — `control_plane` group: downloads and installs the pinned k3s version, saves the join token to `~/.local/share/k3s-token` (mode 600), fetches the kubeconfig and patches the server address from `127.0.0.1` to the actual node IP before writing to `~/.kube/config`.
+3. **k3s-worker-role** — `workers` group: reads the join token and installs k3s agent.
+4. **argocd** — `control_plane` group: applies the ArgoCD install manifest, exposes `argocd-server` as NodePort, waits for all components, and prints the UI URL and initial admin password.
 
 ### Inventory groups
 
 | Group | Host | IP |
 |---|---|---|
-| `control-plane` | `k3s-master` | `192.168.56.101` |
+| `control_plane` | `k3s-master` | `192.168.56.101` |
 | `workers` | `k3s-worker` | `192.168.56.102` |
+
+### Key variables (role defaults)
+
+| Variable | Default | Role |
+|---|---|---|
+| `k3s_version` | `v1.32.4+k3s1` | k3s-master-role, k3s-worker-role |
+| `k3s_extra_server_args` | `--disable traefik` | k3s-master-role |
+| `k3s_token_path` | `~/.local/share/k3s-token` | k3s-master-role, k3s-worker-role |
+| `k3s_kubeconfig_dest` | `~/.kube/config` | k3s-master-role |
+| `argocd_version` | `v2.13.3` | argocd |
+| `argocd_namespace` | `argocd` | argocd |
+
+Override any variable with `-e` or in `inventory/hosts.yaml`:
+```bash
+ansible-playbook playbooks/site.yaml --tags argocd -e argocd_version=v2.14.0
+```
 
 ### Key design details
 
 - k3s is installed without Traefik (`--disable traefik`) — a different ingress controller is expected.
-- The node join token flows through the control machine's filesystem (`/tmp/k3s-token`) rather than Ansible variables to keep it out of memory/logs.
-- `k3s-master-role` uses `creates: /usr/local/bin/k3s` to make the install idempotent.
-- The reset playbook uninstalls k3s via the official uninstall scripts and also cleans up the local kubeconfig and token file.
+- The install script is downloaded to `/tmp/k3s-install.sh` before execution (not piped directly to shell) and `INSTALL_K3S_VERSION` pins the version.
+- The join token is passed to the worker via environment variable (`K3S_TOKEN`) with `no_log: true` — it never appears in Ansible output.
+- All `kubectl` tasks in the argocd role set `KUBECONFIG: /etc/rancher/k3s/k3s.yaml` explicitly, since the play runs as root via `become: true` and k3s does not write to `/root/.kube/config`.
+- ArgoCD manifests are cached at `/tmp/argocd-<version>-install.yaml` — changing `argocd_version` triggers a fresh download automatically.
+- The reset playbook resets workers before the master (workers must leave first), then cleans up the local token and kubeconfig.

@@ -29,10 +29,51 @@ jobs:
         run: pip install 'ansible-core~=2.17' 'ansible-lint~=24.0' 'yamllint~=1.35'
 
       - name: yamllint
-        run: yamllint .
+        id: yamllint
+        run: |
+          yamllint -f github . 2>&1 | tee /tmp/yamllint.txt
+          exit ${PIPESTATUS[0]}
+        continue-on-error: true
 
       - name: ansible-lint
-        run: ansible-lint
+        id: ansible-lint
+        run: |
+          ansible-lint -f github 2>&1 | tee /tmp/ansible-lint.txt
+          exit ${PIPESTATUS[0]}
+        continue-on-error: true
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          yamllint_icon=$([[ "${{ steps.yamllint.outcome }}" == "success" ]] && echo "✅ Passed" || echo "❌ Failed")
+          lint_icon=$([[ "${{ steps.ansible-lint.outcome }}" == "success" ]] && echo "✅ Passed" || echo "❌ Failed")
+          {
+            echo "## Lint Results"
+            echo ""
+            echo "| Tool | Status |"
+            echo "|------|--------|"
+            echo "| yamllint | $yamllint_icon |"
+            echo "| ansible-lint | $lint_icon |"
+            if [[ "${{ steps.yamllint.outcome }}" != "success" && -s /tmp/yamllint.txt ]]; then
+              echo ""
+              echo "### yamllint findings"
+              echo '```'
+              cat /tmp/yamllint.txt
+              echo '```'
+            fi
+            if [[ "${{ steps.ansible-lint.outcome }}" != "success" && -s /tmp/ansible-lint.txt ]]; then
+              echo ""
+              echo "### ansible-lint findings"
+              echo '```'
+              cat /tmp/ansible-lint.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on errors
+        if: steps.yamllint.outcome == 'failure' || steps.ansible-lint.outcome == 'failure'
+        run: exit 1
 
   syntax-check:
     name: Syntax check
@@ -52,10 +93,51 @@ jobs:
         run: pip install 'ansible-core~=2.17'
 
       - name: Syntax check — site.yaml
-        run: ansible-playbook playbooks/site.yaml --syntax-check
+        id: site
+        run: |
+          ansible-playbook playbooks/site.yaml --syntax-check 2>&1 | tee /tmp/site-syntax.txt
+          exit ${PIPESTATUS[0]}
+        continue-on-error: true
 
       - name: Syntax check — reset.yaml
-        run: ansible-playbook playbooks/reset.yaml --syntax-check
+        id: reset
+        run: |
+          ansible-playbook playbooks/reset.yaml --syntax-check 2>&1 | tee /tmp/reset-syntax.txt
+          exit ${PIPESTATUS[0]}
+        continue-on-error: true
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          site_icon=$([[ "${{ steps.site.outcome }}" == "success" ]] && echo "✅ Passed" || echo "❌ Failed")
+          reset_icon=$([[ "${{ steps.reset.outcome }}" == "success" ]] && echo "✅ Passed" || echo "❌ Failed")
+          {
+            echo "## Syntax Check Results"
+            echo ""
+            echo "| Playbook | Status |"
+            echo "|----------|--------|"
+            echo "| site.yaml | $site_icon |"
+            echo "| reset.yaml | $reset_icon |"
+            if [[ "${{ steps.site.outcome }}" != "success" && -s /tmp/site-syntax.txt ]]; then
+              echo ""
+              echo "### site.yaml error"
+              echo '```'
+              cat /tmp/site-syntax.txt
+              echo '```'
+            fi
+            if [[ "${{ steps.reset.outcome }}" != "success" && -s /tmp/reset-syntax.txt ]]; then
+              echo ""
+              echo "### reset.yaml error"
+              echo '```'
+              cat /tmp/reset-syntax.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on errors
+        if: steps.site.outcome == 'failure' || steps.reset.outcome == 'failure'
+        run: exit 1
 
   molecule:
     name: Molecule — common role
@@ -72,8 +154,36 @@ jobs:
         run: pip install 'ansible-core~=2.17' molecule 'molecule-plugins[docker]' docker
 
       - name: Run molecule
-        run: molecule test
+        id: molecule
+        run: |
+          molecule test 2>&1 | tee /tmp/molecule.txt
+          exit ${PIPESTATUS[0]}
         working-directory: Ansible/roles/common
+        continue-on-error: true
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          molecule_icon=$([[ "${{ steps.molecule.outcome }}" == "success" ]] && echo "✅ Passed" || echo "❌ Failed")
+          {
+            echo "## Molecule Results"
+            echo ""
+            echo "| Scenario | Status |"
+            echo "|----------|--------|"
+            echo "| common / default | $molecule_icon |"
+            if [[ "${{ steps.molecule.outcome }}" != "success" && -s /tmp/molecule.txt ]]; then
+              echo ""
+              echo "### Failure output"
+              echo '```'
+              tail -100 /tmp/molecule.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on errors
+        if: steps.molecule.outcome == 'failure'
+        run: exit 1

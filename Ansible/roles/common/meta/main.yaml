@@ -1,0 +1,4 @@
+galaxy_info:
+  role_name: common
+  description: Base package setup for all nodes
+  min_ansible_version: "2.14"

@@ -1,77 +1,63 @@
 # playbooks/reset.yaml
 - name: Reset k3s workers
   hosts: workers
-  become: yes
+  become: true
   tasks:
-    - name: Stop k3s worker service
-      systemd:
-        name: k3s
+    - name: Stop k3s-agent service
+      ansible.builtin.systemd:
+        name: k3s-agent
         state: stopped
-      ignore_errors: yes
+      failed_when: false
 
-    - name: Run k3s worker uninstall script
-      shell: /usr/local/bin/k3s-agent-uninstall.sh
+    - name: Run k3s agent uninstall script
+      ansible.builtin.shell: /usr/local/bin/k3s-agent-uninstall.sh
       args:
         removes: /usr/local/bin/k3s-agent-uninstall.sh
-      ignore_errors: yes
 
     - name: Remove k3s binary
-      file:
+      ansible.builtin.file:
         path: /usr/local/bin/k3s
         state: absent
 
 - name: Reset k3s master
-  hosts: control-plane
-  become: yes
+  hosts: control_plane
+  become: true
   tasks:
     - name: Stop k3s service
-      systemd:
+      ansible.builtin.systemd:
         name: k3s
         state: stopped
-      ignore_errors: no
 
     - name: Run k3s master uninstall script
-      shell: /usr/local/bin/k3s-uninstall.sh
+      ansible.builtin.shell: /usr/local/bin/k3s-uninstall.sh
       args:
         removes: /usr/local/bin/k3s-uninstall.sh
-      ignore_errors: no
 
     - name: Remove k3s binary
-      file:
+      ansible.builtin.file:
         path: /usr/local/bin/k3s
         state: absent
 
     - name: Remove k3s data directory
-      file:
+      ansible.builtin.file:
         path: /var/lib/rancher
         state: absent
 
     - name: Remove k3s config directory
-      file:
+      ansible.builtin.file:
         path: /etc/rancher
         state: absent
 
 - name: Cleanup local files
   hosts: localhost
-  become: no
+  become: false
   tasks:
-    - name: Remove k3s token file
-      file:
-        path: /tmp/k3s-token
+    - name: Remove k3s join token
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.local/share/k3s-token"
         state: absent
 
     - name: Remove kubeconfig
-      file:
-        path: ~/.kube/config
-        state: absent
-      ignore_errors: no
-
-    - name: Remove node password file
-      file:
-        path: /etc/rancher/node/password
-        state: absent
-
-    - name: Remove node passwd on master
-      file:
-        path: /var/lib/rancher/k3s/server/cred/node-passwd
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.kube/config"
         state: absent

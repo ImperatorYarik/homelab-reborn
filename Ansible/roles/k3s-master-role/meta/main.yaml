@@ -1,0 +1,4 @@
+galaxy_info:
+  role_name: k3s_master
+  description: Install and configure k3s server on the control plane
+  min_ansible_version: "2.14"

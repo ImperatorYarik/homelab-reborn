@@ -1,0 +1,4 @@
+galaxy_info:
+  role_name: argocd
+  description: Install ArgoCD into a k3s cluster
+  min_ansible_version: "2.14"

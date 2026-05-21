@@ -13,7 +13,7 @@ verifier:
   name: ansible
 scenario:
   test_sequence:
-    - cleanup
+    - dependency
     - destroy
     - syntax
     - create
@@ -22,5 +22,4 @@ scenario:
     - idempotence
     - side_effect
     - verify
-    - cleanup
     - destroy

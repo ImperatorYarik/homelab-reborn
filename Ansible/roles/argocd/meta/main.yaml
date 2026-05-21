@@ -1,5 +1,6 @@
 ---
 galaxy_info:
+  author: ytsalko
   role_name: argocd
   namespace: ytsalko
   description: Install ArgoCD into a k3s cluster

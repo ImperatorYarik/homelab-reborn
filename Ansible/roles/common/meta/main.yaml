@@ -1,5 +1,6 @@
 ---
 galaxy_info:
+  author: ytsalko
   role_name: common
   namespace: ytsalko
   description: Base package setup for all nodes

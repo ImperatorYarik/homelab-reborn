@@ -1,5 +1,6 @@
 ---
 galaxy_info:
+  author: ytsalko
   role_name: k3s_worker
   namespace: ytsalko
   description: Join a node to an existing k3s cluster as an agent

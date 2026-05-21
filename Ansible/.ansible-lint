@@ -1,7 +1,11 @@
+---
 profile: basic
 
 exclude_paths:
   - .git/
+
+skip_list:
+  - role-name  # k3s-master-role and k3s-worker-role use hyphens; renaming would break established references
 
 warn_list:
   - command-instead-of-module  # kubectl tasks intentionally use command, not kubernetes.core

@@ -8,11 +8,11 @@
 - name: Create argocd namespace
   ansible.builtin.command:
     cmd: kubectl create namespace {{ argocd_namespace }}
-  register: ns_result
+  register: argocd_ns_result
   failed_when:
-    - ns_result.rc != 0
-    - "'AlreadyExists' not in ns_result.stderr"
-  changed_when: ns_result.rc == 0
+    - argocd_ns_result.rc != 0
+    - "'AlreadyExists' not in argocd_ns_result.stderr"
+  changed_when: argocd_ns_result.rc == 0
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 

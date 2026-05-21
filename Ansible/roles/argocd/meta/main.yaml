@@ -1,4 +1,8 @@
+---
 galaxy_info:
+  author: ytsalko
+  license: MIT
   role_name: argocd
+  namespace: ytsalko
   description: Install ArgoCD into a k3s cluster
   min_ansible_version: "2.14"

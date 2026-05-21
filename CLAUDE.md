@@ -81,6 +81,42 @@ Override any variable with `-e` or in `inventory/hosts.yaml`:
 ansible-playbook playbooks/site.yaml --tags argocd -e argocd_version=v2.14.0
 ```
 
+## CI
+
+Three GitHub Actions jobs run on any push that touches `Ansible/` (`.github/workflows/ansible-ci.yml`). Dependencies are pinned in `.github/requirements/`.
+
+| Job | Tool | What it checks |
+|-----|------|----------------|
+| `lint` | yamllint + ansible-lint | YAML formatting, Ansible best practices |
+| `syntax-check` | ansible-playbook | Both playbooks parse and all roles resolve |
+| `molecule` | molecule + Docker | `common` role actually installs packages correctly |
+
+Each job writes a Markdown status table to the GitHub Step Summary; failures append the tool output below the table. yamllint also emits inline PR annotations via `-f github`.
+
+### Linting rules
+
+ansible-lint runs with `profile: basic`. Constraints to keep in mind when writing new tasks or roles:
+
+- All YAML files must start with `---`.
+- `galaxy_info` in `meta/main.yaml` requires `author`, `license`, and `namespace` — all set to `ytsalko` / `MIT`.
+- Role directory names must match `^[a-z][a-z0-9_]*$` (underscores only, no hyphens). `k3s-master-role` and `k3s-worker-role` are grandfathered via `skip_list` in `.ansible-lint`.
+- Variables defined inside a role must be prefixed with the role name (e.g. `argocd_`, `k3s_`).
+- `ansible.builtin.shell` is only valid when the command uses shell features (pipes, globs, redirects). Use `ansible.builtin.command` otherwise.
+- `ansible.builtin.command` for `kubectl` is intentional (no `kubernetes.core` dependency) — demoted to warning in `.ansible-lint`.
+- `.yamllint.yml` must include specific rules required by ansible-lint: `comments-indentation: false`, `braces.max-spaces-inside: 1`, `octal-values.forbid-*: true`.
+
+### Molecule
+
+Tests live in `roles/common/molecule/default/`. The Docker driver requires the `community.docker` Ansible collection, installed automatically via `requirements.yml` in the scenario directory. The test image is `geerlingguy/docker-ubuntu2404-ansible` (pre-built, includes Python and sudo).
+
+To run molecule locally from `Ansible/roles/common/`:
+```bash
+molecule test          # full sequence
+molecule converge      # apply role only
+molecule verify        # run assertions only
+molecule destroy       # clean up container
+```
+
 ### Key design details
 
 - k3s is installed without Traefik (`--disable traefik`) — a different ingress controller is expected.

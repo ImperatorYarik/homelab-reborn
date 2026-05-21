@@ -1,4 +1,8 @@
+---
 galaxy_info:
+  author: ytsalko
+  license: MIT
   role_name: k3s_worker
+  namespace: ytsalko
   description: Join a node to an existing k3s cluster as an agent
   min_ansible_version: "2.14"

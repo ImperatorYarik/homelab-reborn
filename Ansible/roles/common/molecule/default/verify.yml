@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Collect package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Assert required packages are installed
+      ansible.builtin.assert:
+        that: item in ansible_facts.packages
+        fail_msg: "Package {{ item }} is not installed"
+      loop:
+        - git
+        - curl
+        - wget
+        - htop
+        - net-tools

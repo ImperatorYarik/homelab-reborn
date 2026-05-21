@@ -1,3 +1,4 @@
+---
 - name: Load join token
   ansible.builtin.set_fact:
     k3s_token: "{{ lookup('file', k3s_token_path) | b64decode | trim }}"

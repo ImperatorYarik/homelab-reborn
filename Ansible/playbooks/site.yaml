@@ -1,0 +1,27 @@
+- name: Pre-configuration [ALL nodes]
+  hosts: all
+  become: true
+  tags: [common]
+  roles:
+    - common
+
+- name: Setup K3S control plane
+  hosts: control_plane
+  become: true
+  tags: [k3s, k3s-master]
+  roles:
+    - k3s-master-role
+
+- name: Setup K3S workers
+  hosts: workers
+  become: true
+  tags: [k3s, k3s-worker]
+  roles:
+    - k3s-worker-role
+
+- name: Setup ArgoCD
+  hosts: control_plane
+  become: true
+  tags: [argocd]
+  roles:
+    - argocd

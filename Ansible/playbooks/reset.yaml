@@ -1,0 +1,63 @@
+# playbooks/reset.yaml
+- name: Reset k3s workers
+  hosts: workers
+  become: true
+  tasks:
+    - name: Stop k3s-agent service
+      ansible.builtin.systemd:
+        name: k3s-agent
+        state: stopped
+      failed_when: false
+
+    - name: Run k3s agent uninstall script
+      ansible.builtin.shell: /usr/local/bin/k3s-agent-uninstall.sh
+      args:
+        removes: /usr/local/bin/k3s-agent-uninstall.sh
+
+    - name: Remove k3s binary
+      ansible.builtin.file:
+        path: /usr/local/bin/k3s
+        state: absent
+
+- name: Reset k3s master
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: Stop k3s service
+      ansible.builtin.systemd:
+        name: k3s
+        state: stopped
+
+    - name: Run k3s master uninstall script
+      ansible.builtin.shell: /usr/local/bin/k3s-uninstall.sh
+      args:
+        removes: /usr/local/bin/k3s-uninstall.sh
+
+    - name: Remove k3s binary
+      ansible.builtin.file:
+        path: /usr/local/bin/k3s
+        state: absent
+
+    - name: Remove k3s data directory
+      ansible.builtin.file:
+        path: /var/lib/rancher
+        state: absent
+
+    - name: Remove k3s config directory
+      ansible.builtin.file:
+        path: /etc/rancher
+        state: absent
+
+- name: Cleanup local files
+  hosts: localhost
+  become: false
+  tasks:
+    - name: Remove k3s join token
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.local/share/k3s-token"
+        state: absent
+
+    - name: Remove kubeconfig
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.kube/config"
+        state: absent

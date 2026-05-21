@@ -1,0 +1,68 @@
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0700'
+    force: false
+
+- name: Install k3s server
+  ansible.builtin.command:
+    cmd: /tmp/k3s-install.sh
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: "{{ k3s_extra_server_args }} --node-ip {{ k3s_node_ip }}"
+
+- name: Get k3s join token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_token_raw
+  no_log: true
+
+- name: Ensure local token directory exists
+  ansible.builtin.file:
+    path: "{{ k3s_token_path | dirname }}"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  become: false
+
+- name: Save join token locally
+  ansible.builtin.copy:
+    content: "{{ k3s_token_raw.content }}"
+    dest: "{{ k3s_token_path }}"
+    mode: '0600'
+  delegate_to: localhost
+  become: false
+  no_log: true
+
+- name: Fetch kubeconfig from master
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /tmp/k3s-kubeconfig.yaml
+    flat: true
+
+- name: Patch server address in kubeconfig
+  ansible.builtin.replace:
+    path: /tmp/k3s-kubeconfig.yaml
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ k3s_node_ip }}:6443"
+  delegate_to: localhost
+  become: false
+
+- name: Ensure ~/.kube directory exists
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_dest | dirname }}"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  become: false
+
+- name: Install kubeconfig
+  ansible.builtin.copy:
+    src: /tmp/k3s-kubeconfig.yaml
+    dest: "{{ k3s_kubeconfig_dest }}"
+    mode: '0600'
+    backup: true
+  delegate_to: localhost
+  become: false
